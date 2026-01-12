@@ -154,6 +154,18 @@ mihoro cron status
 
 The `auto_update_interval` in `mihoro.toml` controls the update frequency in hours (default: 12, range: 1-24). Set to `0` to disable.
 
+To upgrade `mihoro` itself to the latest version:
+
+```bash
+mihoro upgrade
+```
+
+Or check for updates without installing:
+
+```bash
+mihoro upgrade --check
+```
+
 Shell auto-completions are available under `mihoro completions` for bash, fish, zsh:
 
 ```bash
@@ -186,9 +198,10 @@ Commands:
   restart         Restart mihomo.service with systemctl
   log             Check mihomo.service logs with journalctl
   proxy           Output proxy export commands
-  cron            Manage auto-update cron job
   uninstall       Uninstall and remove mihoro and config
   completions     Generate shell completions for mihoro
+  cron            Manage auto-update cron job
+  upgrade         Upgrade mihoro to the latest version
   help            Print this message or the help of the given subcommand(s)
 
 Options:

@@ -52,6 +52,16 @@ pub enum Commands {
         #[clap(subcommand)]
         cron: Option<CronCommands>,
     },
+    /// Upgrade mihoro to the latest version
+    Upgrade {
+        /// Skip confirmation prompt
+        #[arg(short = 'y', long)]
+        yes: bool,
+
+        /// Only check for updates, don't install
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[derive(Subcommand)]

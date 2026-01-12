@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Applying config overrides via TOML (local settings override remote YAML)
 - Managing the per-user systemd service
 - Exporting proxy environment variables for shells
+- Self-upgrading to the latest GitHub release
 
 ## Build and Development Commands
 
@@ -59,7 +60,9 @@ src/
 ├── utils.rs      # File I/O, download, gzip extraction, base64 decoding
 ├── systemctl.rs  # Fluent wrapper around systemctl commands
 ├── cmd.rs        # Clap derive enums for CLI structure
-└── proxy.rs      # Shell-specific proxy env var generation
+├── proxy.rs      # Shell-specific proxy env var generation
+├── upgrade.rs    # Self-upgrade functionality using self_update crate
+└── cron.rs       # Auto-update cron job management
 ```
 
 ### Key Abstractions
@@ -78,6 +81,13 @@ src/
 3. **Mihoro**: Main struct holding config and derived paths
    - All methods return `anyhow::Result<T>` for consistent error handling
    - Uses Tokio async for downloads
+
+4. **Self-Upgrade System**: Automatic updates using GitHub releases
+   - `upgrade::run_upgrade()`: Downloads and replaces the current binary
+   - `upgrade::check_for_update()`: Checks for new versions without installing
+   - Uses `self_update` crate with GitHub backend
+   - Runs in `tokio::task::spawn_blocking` to avoid async runtime conflicts
+   - **Important**: Release workflow MUST name artifacts as `mihoro-<version>-<target>.tar.gz`
 
 ### Configuration Flow
 
@@ -102,6 +112,7 @@ src/
 - `anyhow`: Error handling
 - `colored`: Terminal colors
 - `indicatif`: Progress bars for downloads
+- `self_update` 0.42: Self-upgrade functionality with GitHub releases backend
 
 ## Code Style
 
