@@ -4,6 +4,7 @@ mod cron;
 mod mihoro;
 mod proxy;
 mod systemctl;
+mod upgrade;
 mod utils;
 
 use anyhow::Result;
@@ -92,6 +93,33 @@ async fn cli() -> Result<()> {
         },
 
         Some(Commands::Cron { cron }) => mihoro.cron_commands(cron)?,
+
+        Some(Commands::Upgrade { yes, check }) => {
+            if *check {
+                match upgrade::check_for_update().await? {
+                    Some(version) => {
+                        println!(
+                            "{} New version available: {}",
+                            mihoro.prefix.yellow(),
+                            version.bold().green()
+                        );
+                        println!(
+                            "{} Run {} to update",
+                            "->".dimmed(),
+                            "mihoro upgrade".bold().underline()
+                        );
+                    }
+                    None => {
+                        println!(
+                            "{} You're running the latest version",
+                            mihoro.prefix.green()
+                        );
+                    }
+                }
+            } else {
+                upgrade::run_upgrade(*yes).await?;
+            }
+        }
 
         None => (),
     }
