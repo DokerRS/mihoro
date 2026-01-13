@@ -25,7 +25,13 @@
 ## Install
 
 ```shell
-curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/spencerwooo/mihoro/main/install.sh | sh -
+curl -fsSL https://raw.githubusercontent.com/spencerwooo/mihoro/main/install.sh | sh
+```
+
+Optionally, download over a mirror:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/spencerwooo/mihoro/main/install.sh | sh -s -- --mirror https://ghfast.top
 ```
 
 > [!IMPORTANT]
