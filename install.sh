@@ -1,13 +1,6 @@
 #!/bin/sh
 # shellcheck shell=dash
 
-# Installing mihoro - with code shamelessly referenced from zoxide/install.sh
-#
-# https://github.com/ajeetdsouza/zoxide/blob/7af4da1dabfcfc9a4b23cc8807150bf2f61a0df6/install.sh
-#
-# It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
-# extension. Note: Most shells limit `local` to 1 var per line, contra bash.
-
 main() {
   if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
     # The version of ksh93 that ships with many illumos systems does not
@@ -17,6 +10,27 @@ main() {
   fi
 
   set -u
+  set -e  # Exit on error
+
+  # Default: no mirror (can be overridden via --mirror)
+  _mirror=""
+
+  # Parse arguments
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --mirror)
+        _mirror="$2"
+        shift 2
+        ;;
+      --no-mirror)
+        _mirror=""
+        shift
+        ;;
+      *)
+        err "Unknown option: $1"
+        ;;
+    esac
+  done
 
   # Detect and print host target triple.
   ensure get_architecture
@@ -27,9 +41,15 @@ main() {
   # Create and enter a temporary directory.
   local _tmp_dir
   _tmp_dir="$(mktemp -d)" || err "mktemp: could not create temporary directory"
+
+  cleanup() {
+    rm -rf "$_tmp_dir"
+  }
+  trap cleanup EXIT INT TERM
+
   cd "$_tmp_dir" || err "cd: failed to enter directory: $_tmp_dir"
 
-  # Download and extract zoxide.
+  # Download and extract mihoro.
   ensure download_mihoro "$_arch"
   local _package="$RETVAL"
   assert_nz "$_package" "package"
@@ -97,10 +117,51 @@ download_mihoro() {
   esac
 
   local _package="mihoro.$_ext"
+
+  # Build download URL with optional mirror prefix
+  local _download_url
+  if [ -n "$_mirror" ]; then
+    _download_url="$_mirror/$_package_url"
+  else
+    _download_url="$_package_url"
+  fi
+
   case "$_dld" in
-  curl) _releases="$(curl -sLo "$_package" "https://ghfast.top/$_package_url")" || err "curl: failed to download https://ghfast.top/$_package_url" ;;
-  wget) _releases="$(wget -qO "$_package" "https://ghfast.top/$_package_url")" || err "wget: failed to download https://ghfast.top/$_package_url" ;;
+  curl) curl -sLo "$_package" "$_download_url" || err "curl: failed to download $_download_url" ;;
+  wget) wget -qO "$_package" "$_download_url" || err "wget: failed to download $_download_url" ;;
   esac
+
+  # Download and verify checksum
+  local _checksum_url="${_package_url}.sha256"
+  local _checksum_file="${_package}.sha256"
+  local _checksum_download_url
+  if [ -n "$_mirror" ]; then
+    _checksum_download_url="$_mirror/$_checksum_url"
+  else
+    _checksum_download_url="$_checksum_url"
+  fi
+
+  case "$_dld" in
+  curl) curl -sLo "$_checksum_file" "$_checksum_download_url" 2>/dev/null || true ;;
+  wget) wget -qO "$_checksum_file" "$_checksum_download_url" 2>/dev/null || true ;;
+  esac
+
+  if [ -f "$_checksum_file" ] && [ -s "$_checksum_file" ]; then
+    if check_cmd sha256sum; then
+      echo "Verifying checksum..."
+      # Extract just the hash and compare
+      local _expected_hash _actual_hash
+      _expected_hash=$(cut -d ' ' -f 1 < "$_checksum_file")
+      _actual_hash=$(sha256sum "$_package" | cut -d ' ' -f 1)
+      if [ "$_expected_hash" = "$_actual_hash" ]; then
+        echo "Checksum verified"
+      else
+        err "Checksum verification failed! File may be corrupted."
+      fi
+    fi
+  else
+    echo "Warning: Could not download checksum file, skipping verification"
+  fi
 
   RETVAL="$_package"
 }
