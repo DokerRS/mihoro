@@ -166,6 +166,13 @@ Or check for updates without installing:
 mihoro upgrade --check
 ```
 
+To manually specify a target architecture (useful when auto-detection fails, e.g., on Ubuntu 20.04):
+
+```bash
+mihoro upgrade --target x86_64-unknown-linux-musl
+mihoro upgrade --target aarch64-unknown-linux-musl
+```
+
 Shell auto-completions are available under `mihoro completions` for bash, fish, zsh:
 
 ```bash

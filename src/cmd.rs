@@ -61,6 +61,10 @@ pub enum Commands {
         /// Only check for updates, don't install
         #[arg(long)]
         check: bool,
+
+        /// Override target triple (e.g., x86_64-unknown-linux-gnu)
+        #[arg(long)]
+        target: Option<String>,
     },
 }
 

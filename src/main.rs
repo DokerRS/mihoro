@@ -94,7 +94,7 @@ async fn cli() -> Result<()> {
 
         Some(Commands::Cron { cron }) => mihoro.cron_commands(cron)?,
 
-        Some(Commands::Upgrade { yes, check }) => {
+        Some(Commands::Upgrade { yes, check, target }) => {
             if *check {
                 match upgrade::check_for_update().await? {
                     Some(version) => {
@@ -117,7 +117,7 @@ async fn cli() -> Result<()> {
                     }
                 }
             } else {
-                upgrade::run_upgrade(*yes).await?;
+                upgrade::run_upgrade(*yes, target.clone()).await?;
             }
         }
 

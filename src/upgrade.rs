@@ -3,22 +3,28 @@ use colored::Colorize;
 use self_update::cargo_crate_version;
 
 /// Perform the upgrade to the latest version
-pub async fn run_upgrade(no_confirm: bool) -> Result<()> {
+pub async fn run_upgrade(no_confirm: bool, target: Option<String>) -> Result<()> {
     let prefix = "mihoro:";
 
     println!("{} Checking for mihoro updates...", prefix.cyan());
 
     let result = tokio::task::spawn_blocking(move || {
-        self_update::backends::github::Update::configure()
+        let mut builder = self_update::backends::github::Update::configure();
+        builder
             .repo_owner("spencerwooo")
             .repo_name("mihoro")
             .bin_name("mihoro")
             .show_download_progress(true)
             .show_output(true)
             .no_confirm(no_confirm)
-            .current_version(cargo_crate_version!())
-            .build()?
-            .update()
+            .current_version(cargo_crate_version!());
+
+        // Override target if provided
+        if let Some(target) = target {
+            builder.target(&target);
+        }
+
+        builder.build()?.update()
     })
     .await?;
 
