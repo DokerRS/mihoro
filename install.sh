@@ -39,13 +39,8 @@ main() {
   echo "Detected architecture: $_arch"
 
   # Create and enter a temporary directory.
-  local _tmp_dir
   _tmp_dir="$(mktemp -d)" || err "mktemp: could not create temporary directory"
-
-  cleanup() {
-    rm -rf "$_tmp_dir"
-  }
-  trap cleanup EXIT INT TERM
+  trap 'rm -rf "$_tmp_dir"' EXIT INT TERM
 
   cd "$_tmp_dir" || err "cd: failed to enter directory: $_tmp_dir"
 
@@ -130,38 +125,6 @@ download_mihoro() {
   curl) curl -sLo "$_package" "$_download_url" || err "curl: failed to download $_download_url" ;;
   wget) wget -qO "$_package" "$_download_url" || err "wget: failed to download $_download_url" ;;
   esac
-
-  # Download and verify checksum
-  local _checksum_url="${_package_url}.sha256"
-  local _checksum_file="${_package}.sha256"
-  local _checksum_download_url
-  if [ -n "$_mirror" ]; then
-    _checksum_download_url="$_mirror/$_checksum_url"
-  else
-    _checksum_download_url="$_checksum_url"
-  fi
-
-  case "$_dld" in
-  curl) curl -sLo "$_checksum_file" "$_checksum_download_url" 2>/dev/null || true ;;
-  wget) wget -qO "$_checksum_file" "$_checksum_download_url" 2>/dev/null || true ;;
-  esac
-
-  if [ -f "$_checksum_file" ] && [ -s "$_checksum_file" ]; then
-    if check_cmd sha256sum; then
-      echo "Verifying checksum..."
-      # Extract just the hash and compare
-      local _expected_hash _actual_hash
-      _expected_hash=$(cut -d ' ' -f 1 < "$_checksum_file")
-      _actual_hash=$(sha256sum "$_package" | cut -d ' ' -f 1)
-      if [ "$_expected_hash" = "$_actual_hash" ]; then
-        echo "Checksum verified"
-      else
-        err "Checksum verification failed! File may be corrupted."
-      fi
-    fi
-  else
-    echo "Warning: Could not download checksum file, skipping verification"
-  fi
 
   RETVAL="$_package"
 }
