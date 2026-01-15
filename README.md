@@ -20,7 +20,7 @@
 * No root privilege required. Maintains per-user instance.
 * First-class support for config subscription.
 
-![screenshot](https://github.com/user-attachments/assets/f1120e69-650e-4714-9f57-2fe793115d13)
+<img width="1136" height="911" alt="screenshot" src="https://github.com/user-attachments/assets/abfeb381-3ea2-45c8-ac0a-d55f7ba35fbb" />
 
 ## Install
 
