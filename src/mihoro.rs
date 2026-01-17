@@ -2,6 +2,7 @@ use crate::cmd::{CronCommands, ProxyCommands};
 use crate::config::{apply_mihomo_override, parse_config, Config};
 use crate::cron;
 use crate::proxy::{proxy_export_cmd, proxy_unset_cmd};
+use crate::resolve_mihomo_bin;
 use crate::systemctl::Systemctl;
 use crate::utils::{
     create_parent_dir, delete_file, download_file, extract_gzip, try_decode_base64_file_inplace,
@@ -49,7 +50,12 @@ impl Mihoro {
         })
     }
 
-    pub async fn setup(&self, client: Client, overwrite_binary: bool) -> Result<()> {
+    pub async fn setup(
+        &self,
+        client: Client,
+        overwrite_binary: bool,
+        arch_override: Option<&str>,
+    ) -> Result<()> {
         println!(
             "{} Setting up mihomo's binary, config, and systemd service...",
             &self.prefix.cyan()
@@ -72,6 +78,15 @@ impl Mihoro {
                 );
             }
 
+            // Resolve binary URL (auto-detect from GitHub or use configured URL)
+            let binary_url = resolve_mihomo_bin::resolve_binary_url(
+                &client,
+                &self.config,
+                arch_override,
+                &self.prefix,
+            )
+            .await?;
+
             // Create a temporary file for downloading
             let temp_file = NamedTempFile::new()?;
             let temp_path = temp_file.path();
@@ -79,7 +94,7 @@ impl Mihoro {
             // Download mihomo binary and set permission to executable
             download_file(
                 &client,
-                &self.config.remote_mihomo_binary_url,
+                &binary_url,
                 temp_path,
                 &self.config.mihoro_user_agent,
             )
@@ -118,7 +133,7 @@ impl Mihoro {
         apply_mihomo_override(&self.mihomo_target_config_path, &self.config.mihomo_config)?;
 
         // Download geodata
-        self.update_geodata(client).await?;
+        self.update_geodata(&client).await?;
 
         // Create mihomo.service systemd file
         create_mihomo_service(
@@ -133,10 +148,78 @@ impl Mihoro {
         Ok(())
     }
 
-    pub async fn update(&self, client: Client) -> Result<()> {
+    pub async fn update_core(
+        &self,
+        client: &Client,
+        arch_override: Option<&str>,
+        restart: bool,
+    ) -> Result<()> {
+        println!("{} Updating mihomo core binary...", &self.prefix.cyan());
+
+        // Check if binary exists
+        let binary_exists = fs::metadata(&self.mihomo_target_binary_path).is_ok();
+        if !binary_exists {
+            return Err(anyhow!(
+                "Mihomo binary not found at {}. Run `mihoro setup` first.",
+                self.mihomo_target_binary_path
+            ));
+        }
+
+        // Resolve binary URL (auto-detect from GitHub or use configured URL)
+        let binary_url = resolve_mihomo_bin::resolve_binary_url(
+            client,
+            &self.config,
+            arch_override,
+            &self.prefix,
+        )
+        .await?;
+
+        // Create a temporary file for downloading
+        let temp_file = NamedTempFile::new()?;
+        let temp_path = temp_file.path();
+
+        // Download mihomo binary first (before stopping service)
+        download_file(
+            client,
+            &binary_url,
+            temp_path,
+            &self.config.mihoro_user_agent,
+        )
+        .await?;
+
+        // Stop the service before overwriting binary to avoid "Text file busy" error
+        println!(
+            "{} Stopping mihomo.service before overwriting...",
+            self.prefix.yellow()
+        );
+        Systemctl::new().stop("mihomo.service").execute()?;
+
+        // Extract and overwrite the binary
+        extract_gzip(temp_path, &self.mihomo_target_binary_path, &self.prefix)?;
+
+        // Set executable permission
+        let executable = fs::Permissions::from_mode(0o755);
+        fs::set_permissions(&self.mihomo_target_binary_path, executable)?;
+
+        println!(
+            "{} Updated mihomo binary at {}",
+            self.prefix.green(),
+            self.mihomo_target_binary_path.underline().yellow()
+        );
+
+        // Restart the service if requested
+        if restart {
+            println!("{} Restarting mihomo.service...", self.prefix.green());
+            Systemctl::new().start("mihomo.service").execute()?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn update_config(&self, client: &Client, restart: bool) -> Result<()> {
         // Download remote mihomo config and apply override
         download_file(
-            &client,
+            client,
             &self.config.remote_config_url,
             Path::new(&self.mihomo_target_config_path),
             &self.config.mihoro_user_agent,
@@ -152,26 +235,28 @@ impl Mihoro {
             self.prefix.yellow()
         );
 
-        // Restart mihomo systemd service
-        println!("{} Restart mihomo.service", self.prefix.green());
-        Systemctl::new().restart("mihomo.service").execute()?;
+        // Restart mihomo systemd service if requested
+        if restart {
+            println!("{} Restart mihomo.service", self.prefix.green());
+            Systemctl::new().restart("mihomo.service").execute()?;
+        }
         Ok(())
     }
 
-    pub async fn update_geodata(&self, client: Client) -> Result<()> {
+    pub async fn update_geodata(&self, client: &Client) -> Result<()> {
         if let Some(geox_url) = self.config.mihomo_config.geox_url.clone() {
             // Download geodata files based on `geodata_mode`
             let geodata_mode = self.config.mihomo_config.geodata_mode.unwrap_or(false);
             if geodata_mode {
                 download_file(
-                    &client,
+                    client,
                     &geox_url.geoip,
                     &Path::new(&self.mihomo_target_config_root).join("geoip.dat"),
                     &self.config.mihoro_user_agent,
                 )
                 .await?;
                 download_file(
-                    &client,
+                    client,
                     &geox_url.geosite,
                     &Path::new(&self.mihomo_target_config_root).join("geosite.dat"),
                     &self.config.mihoro_user_agent,
@@ -179,7 +264,7 @@ impl Mihoro {
                 .await?;
             } else {
                 download_file(
-                    &client,
+                    client,
                     &geox_url.mmdb,
                     &Path::new(&self.mihomo_target_config_root).join("country.mmdb"),
                     &self.config.mihoro_user_agent,

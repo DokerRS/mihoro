@@ -6,17 +6,30 @@ use anyhow::{bail, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
+/// Mihomo release channel for automatic binary fetching.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub enum MihomoChannel {
+    #[default]
+    #[serde(alias = "stable", rename(serialize = "stable"))]
+    Stable,
+    #[serde(alias = "alpha", rename(serialize = "alpha"))]
+    Alpha,
+}
+
 /// `mihoro` configurations.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
 pub struct Config {
-    pub remote_mihomo_binary_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote_mihomo_binary_url: Option<String>,
+    pub mihomo_channel: MihomoChannel,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mihomo_arch: Option<String>,
     pub remote_config_url: String,
     pub mihomo_binary_path: String,
     pub mihomo_config_root: String,
     pub user_systemd_root: String,
     pub mihoro_user_agent: String,
-    /// Auto-update interval in hours. Set to 0 to disable auto-update.
     pub auto_update_interval: u16,
     pub mihomo_config: MihomoConfig,
 }
@@ -25,7 +38,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            remote_mihomo_binary_url: String::from(""),
+            remote_mihomo_binary_url: None,
+            mihomo_channel: MihomoChannel::default(),
+            mihomo_arch: None,
             remote_config_url: String::from(""),
             mihomo_binary_path: String::from("~/.local/bin/mihomo"),
             mihomo_config_root: String::from("~/.config/mihomo"),
