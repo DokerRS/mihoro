@@ -52,6 +52,7 @@ pub enum Commands {
         #[clap(subcommand)]
         cron: Option<CronCommands>,
     },
+    #[cfg_attr(not(feature = "self_update"), command(hide = true))]
     /// Upgrade mihoro to the latest version
     Upgrade {
         /// Skip confirmation prompt
