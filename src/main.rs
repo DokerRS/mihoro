@@ -4,6 +4,7 @@ mod cron;
 mod mihoro;
 mod proxy;
 mod systemctl;
+#[cfg(feature = "self_update")]
 mod upgrade;
 mod utils;
 
@@ -94,6 +95,7 @@ async fn cli() -> Result<()> {
 
         Some(Commands::Cron { cron }) => mihoro.cron_commands(cron)?,
 
+        #[cfg(feature = "self_update")]
         Some(Commands::Upgrade { yes, check, target }) => {
             if *check {
                 match upgrade::check_for_update().await? {
@@ -119,6 +121,13 @@ async fn cli() -> Result<()> {
             } else {
                 upgrade::run_upgrade(*yes, target.clone()).await?;
             }
+        }
+
+        #[cfg(not(feature = "self_update"))]
+        Some(Commands::Upgrade { .. }) => {
+            anyhow::bail!(
+                "mihoro was built without the self_update feature; rebuild with --features self_update"
+            );
         }
 
         None => (),
