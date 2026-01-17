@@ -16,9 +16,9 @@
 
 **mihoro** - The 🦀 Rust™-based [Mihomo](https://github.com/MetaCubeX/mihomo) CLI client on Linux.
 
-* Setup, update, apply overrides, and manage with systemd. **No more, no less.**
-* No root privilege required. Maintains per-user instance.
-* First-class support for config subscription.
+- Setup, update, apply overrides, and manage with systemd. **No more, no less.**
+- No root privilege required. Maintains per-user instance.
+- First-class support for config subscription.
 
 <img width="1136" height="911" alt="screenshot" src="https://github.com/user-attachments/assets/abfeb381-3ea2-45c8-ac0a-d55f7ba35fbb" />
 
@@ -50,7 +50,7 @@ mihoro setup
 The default config will be generated:
 
 ```toml
-remote_mihomo_binary_url = ""
+mihomo_channel = "stable"
 remote_config_url = ""
 mihomo_binary_path = "~/.local/bin/mihomo"
 mihomo_config_root = "~/.config/mihomo"
@@ -61,6 +61,7 @@ auto_update_interval = 12
 [mihomo_config]
 port = 7891
 socks_port = 7892
+mixed_port = 7890
 allow_lan = false
 bind_address = "*"
 mode = "rule"
@@ -78,15 +79,11 @@ geosite = "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/ge
 mmdb = "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
 ```
 
-**Before doing anything, fill in:**
-
-* `remote_mihomo_binary_url`, the `.gz` download url found in [`mihomo`'s GitHub release](https://github.com/MetaCubeX/mihomo/releases/latest).
-* `remote_config_url`, your remote `mihomo` or `clash` subscription url.
+**Before doing anything, fill in `remote_config_url`, which is your remote `mihomo` or `clash` subscription url.**
 
 Example:
 
 ```toml
-remote_mihomo_binary_url = "https://ghfast.top/https://github.com/MetaCubeX/mihomo/releases/download/v1.19.3/mihomo-linux-amd64-v1.19.3.gz"
 remote_config_url = "https://tt.vg/freeclash"  # DO NOT USE THIS IF YOU CAN!
 ```
 
@@ -96,7 +93,7 @@ Customize other settings as needed, then, run setup once more:
 mihoro setup
 ```
 
-... to start downloading `mihomo` binary and your remote configurations.
+... to start downloading `mihomo` binary, your remote config, and geodata.
 
 > [!CAUTION]
 >
@@ -126,6 +123,7 @@ To update subscribed remote config:
 
 ```bash
 mihoro update
+# or explicitly: mihoro update --config
 ```
 
 To apply settings changes after modifying `mihoro.toml`:
@@ -134,11 +132,13 @@ To apply settings changes after modifying `mihoro.toml`:
 mihoro apply
 ```
 
-To overwrite the current mihomo binary for a new version (provided you have updated `remote_mihomo_binary_url`):
+To update `mihomo` binary (core) and/or geodata:
 
 ```bash
-mihoro setup --overwrite
-``` 
+mihoro update --core     # updates core
+mihoro update --geodata  # updates geodata
+mihoro update --all      # updates config -> core -> geodata -> restarts mihomo
+```
 
 To enable auto-update via cron job:
 
@@ -201,21 +201,20 @@ Mihomo CLI client on Linux.
 Usage: mihoro [OPTIONS] [COMMAND]
 
 Commands:
-  setup           Setup mihoro by downloading mihomo binary and remote config
-  update          Update mihomo remote config and restart mihomo.service
-  update-geodata  Update mihomo geodata
-  apply           Apply mihomo config overrides and restart mihomo.service
-  start           Start mihomo.service with systemctl
-  status          Check mihomo.service status with systemctl
-  stop            Stop mihomo.service with systemctl
-  restart         Restart mihomo.service with systemctl
-  log             Check mihomo.service logs with journalctl
-  proxy           Output proxy export commands
-  uninstall       Uninstall and remove mihoro and config
-  completions     Generate shell completions for mihoro
-  cron            Manage auto-update cron job
-  upgrade         Upgrade mihoro to the latest version
-  help            Print this message or the help of the given subcommand(s)
+  setup        Setup mihoro by downloading mihomo binary and remote config
+  update       Update mihomo components (config by default)
+  apply        Apply mihomo config overrides and restart mihomo.service
+  start        Start mihomo.service with systemctl
+  status       Check mihomo.service status with systemctl
+  stop         Stop mihomo.service with systemctl
+  restart      Restart mihomo.service with systemctl
+  log          Check mihomo.service logs with journalctl [aliases: logs]
+  proxy        Output proxy export commands
+  uninstall    Uninstall and remove mihoro and config
+  completions  Generate shell completions for mihoro
+  cron         Manage auto-update cron job
+  upgrade      Upgrade mihoro to the latest version
+  help         Print this message or the help of the given subcommand(s)
 
 Options:
   -m, --mihoro-config <MIHORO_CONFIG>  Path to mihoro config file [default: ~/.config/mihoro.toml]

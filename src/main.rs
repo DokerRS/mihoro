@@ -3,6 +3,7 @@ mod config;
 mod cron;
 mod mihoro;
 mod proxy;
+mod resolve_mihomo_bin;
 mod systemctl;
 mod upgrade;
 mod utils;
@@ -35,9 +36,56 @@ async fn cli() -> Result<()> {
     let mihoro = Mihoro::new(&args.mihoro_config)?;
 
     match &args.command {
-        Some(Commands::Setup { overwrite }) => mihoro.setup(client, *overwrite).await?,
-        Some(Commands::Update) => mihoro.update(client).await?,
-        Some(Commands::UpdateGeodata) => mihoro.update_geodata(client).await?,
+        Some(Commands::Setup { overwrite, arch }) => {
+            mihoro.setup(client, *overwrite, arch.as_deref()).await?
+        }
+        Some(Commands::Update {
+            config,
+            core,
+            geodata,
+            all,
+            arch,
+        }) => {
+            if *all {
+                // Update config (without restarting yet)
+                println!(
+                    "{} Updating config...",
+                    mihoro.prefix.magenta().bold().italic()
+                );
+                if let Err(e) = mihoro.update_config(&client, false).await {
+                    eprintln!("{} Failed to update config: {}", mihoro.prefix.yellow(), e);
+                }
+                // Update geodata
+                println!(
+                    "{} Updating geodata...",
+                    mihoro.prefix.magenta().bold().italic()
+                );
+                if let Err(e) = mihoro.update_geodata(&client).await {
+                    eprintln!("{} Failed to update geodata: {}", mihoro.prefix.yellow(), e);
+                }
+                // Update core (without restarting yet)
+                println!(
+                    "{} Updating core...",
+                    mihoro.prefix.magenta().bold().italic()
+                );
+                if let Err(e) = mihoro.update_core(&client, arch.as_deref(), false).await {
+                    eprintln!("{} Failed to update core: {}", mihoro.prefix.yellow(), e);
+                }
+                // Restart service once at the end
+                println!(
+                    "{} Restarting mihomo.service...",
+                    mihoro.prefix.green().bold().italic()
+                );
+                Systemctl::new().restart("mihomo.service").execute()?;
+            } else if *core {
+                mihoro.update_core(&client, arch.as_deref(), true).await?;
+            } else if *geodata {
+                mihoro.update_geodata(&client).await?;
+            } else if *config || (!*core && !*geodata) {
+                // Explicit --config or default (no flags)
+                mihoro.update_config(&client, true).await?;
+            }
+        }
         Some(Commands::Apply) => mihoro.apply().await?,
         Some(Commands::Uninstall) => mihoro.uninstall()?,
         Some(Commands::Proxy { proxy }) => mihoro.proxy_commands(proxy)?,
