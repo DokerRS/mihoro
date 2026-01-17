@@ -20,12 +20,12 @@ pub enum MihomoChannel {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
 pub struct Config {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub remote_mihomo_binary_url: Option<String>,
+    pub remote_config_url: String,
     pub mihomo_channel: MihomoChannel,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote_mihomo_binary_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mihomo_arch: Option<String>,
-    pub remote_config_url: String,
     pub mihomo_binary_path: String,
     pub mihomo_config_root: String,
     pub user_systemd_root: String,

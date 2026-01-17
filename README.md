@@ -50,8 +50,8 @@ mihoro setup
 The default config will be generated:
 
 ```toml
-mihomo_channel = "stable"
 remote_config_url = ""
+mihomo_channel = "stable"
 mihomo_binary_path = "~/.local/bin/mihomo"
 mihomo_config_root = "~/.config/mihomo"
 user_systemd_root = "~/.config/systemd/user"
