@@ -126,7 +126,7 @@ async fn cli() -> Result<()> {
         #[cfg(not(feature = "self_update"))]
         Some(Commands::Upgrade { .. }) => {
             anyhow::bail!(
-                "mihoro was built without the self_update feature; rebuild with --features self_update"
+                "mihoro was built without self_update support, please use your package manager to upgrade"
             );
         }
 
